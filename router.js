@@ -27,16 +27,18 @@ class Router {
   }
 
   middleware () {
-    return lazy((ctx) => {
-      return Promise.resolve(this.routeFn(ctx)).then((result) => {
+    return lazy(async ctx => {
+      const result = await Promise.resolve(this.routeFn(ctx));
+
+      return await (async result => {
         if (!result || !result.route || !this.handlers.has(result.route)) {
           return this.otherwiseHandler
         }
         Object.assign(ctx, result.context)
         Object.assign(ctx.state, result.state)
         return this.handlers.get(result.route)
-      })
-    })
+      })(result);
+    });
   }
 }
 

@@ -79,24 +79,27 @@ function buildJSONConfig (payload) {
   })
 }
 
-function buildFormDataConfig (payload) {
+async function buildFormDataConfig(payload) {
   if (payload.reply_markup && typeof payload.reply_markup !== 'string') {
     payload.reply_markup = JSON.stringify(payload.reply_markup)
   }
   const boundary = crypto.randomBytes(32).toString('hex')
   const formData = new MultipartStream(boundary)
   const tasks = Object.keys(payload).map((key) => attachFormValue(formData, key, payload[key]))
-  return Promise.all(tasks).then(() => {
+  let generatedVariable1;
+  generatedVariable1 = await Promise.all(tasks);
+
+  return await (async () => {
     return {
       method: 'POST',
       compress: true,
       headers: { 'content-type': `multipart/form-data; boundary=${boundary}`, 'connection': 'keep-alive' },
       body: formData
     }
-  })
+  })();
 }
 
-function attachFormValue (form, id, value) {
+async function attachFormValue(form, id, value) {
   if (!value) {
     return Promise.resolve()
   }
@@ -110,49 +113,56 @@ function attachFormValue (form, id, value) {
   }
   if (id === 'thumb') {
     const attachmentId = crypto.randomBytes(16).toString('hex')
-    return attachFormMedia(form, value, attachmentId)
-      .then(() => form.addPart({
+    let generatedVariable2;
+    generatedVariable2 = await attachFormMedia(form, value, attachmentId);
+
+    return await form.addPart({
         headers: { 'content-disposition': `form-data; name="${id}"` },
         body: `attach://${attachmentId}`
-      }))
+      });
   }
   if (Array.isArray(value)) {
-    return Promise.all(
-      value.map((item) => {
+    const items = await Promise.all(
+      value.map(async item => {
         if (typeof item.media !== 'object') {
           return Promise.resolve(item)
         }
         const attachmentId = crypto.randomBytes(16).toString('hex')
-        return attachFormMedia(form, item.media, attachmentId)
-          .then(() => Object.assign({}, item, { media: `attach://${attachmentId}` }))
+        let generatedVariable3;
+        generatedVariable3 = await attachFormMedia(form, item.media, attachmentId);
+        return await Object.assign({}, item, { media: `attach://${attachmentId}` });
       })
-    ).then((items) => form.addPart({
+    );
+
+    return await form.addPart({
       headers: { 'content-disposition': `form-data; name="${id}"` },
       body: JSON.stringify(items)
-    }))
+    });
   }
   if (typeof value.media !== 'undefined' && typeof value.type !== 'undefined') {
     const attachmentId = crypto.randomBytes(16).toString('hex')
-    return attachFormMedia(form, value.media, attachmentId)
-      .then(() => form.addPart({
+    let generatedVariable4;
+    generatedVariable4 = await attachFormMedia(form, value.media, attachmentId);
+
+    return await form.addPart({
         headers: { 'content-disposition': `form-data; name="${id}"` },
         body: JSON.stringify(Object.assign(value, {
           media: `attach://${attachmentId}`
         }))
-      }))
+      });
   }
   return attachFormMedia(form, value, id)
 }
 
-function attachFormMedia (form, media, id) {
+async function attachFormMedia(form, media, id) {
   let fileName = media.filename || `${id}.${DefaultExtensions[id] || 'dat'}`
   if (media.url) {
-    return fetch(media.url).then((res) =>
-      form.addPart({
-        headers: { 'content-disposition': `form-data; name="${id}"; filename="${fileName}"` },
-        body: res.body
-      })
-    )
+    const res = await fetch(media.url);
+
+    return await form.addPart({
+      headers: { 'content-disposition': `form-data; name="${id}"; filename="${fileName}"` },
+      body: res.body
+    });
   }
   if (media.source) {
     if (fs.existsSync(media.source)) {
@@ -173,7 +183,7 @@ function isKoaResponse (response) {
   return typeof response.set === 'function' && typeof response.header === 'object'
 }
 
-function answerToWebhook (response, payload = {}) {
+async function answerToWebhook(response, payload = {}) {
   if (!includesMedia(payload)) {
     if (isKoaResponse(response)) {
       response.body = payload
@@ -187,8 +197,10 @@ function answerToWebhook (response, payload = {}) {
     )
   }
 
-  return buildFormDataConfig(payload)
-    .then(({ headers, body }) => {
+  let generatedVariable5;
+  generatedVariable5 = await buildFormDataConfig(payload);
+
+  return await (async ({ headers, body }) => {
       if (isKoaResponse(response)) {
         Object.keys(headers).forEach(key => response.set(key, headers[key]))
         response.body = body
@@ -201,7 +213,7 @@ function answerToWebhook (response, payload = {}) {
         response.on('finish', () => resolve(WebhookReplyStub))
         body.pipe(response)
       })
-    })
+    })(generatedVariable5);
 }
 
 class ApiClient {
@@ -222,7 +234,7 @@ class ApiClient {
     return this.options.webhookReply
   }
 
-  callApi (method, data = {}) {
+  async callApi(method, data = {}) {
     const { token, options, response, responseEnd } = this
 
     const payload = Object.keys(data)
@@ -243,27 +255,31 @@ class ApiClient {
     const buildConfig = includesMedia(payload)
       ? buildFormDataConfig(Object.assign({ method }, payload))
       : buildJSONConfig(payload)
-    return buildConfig
-      .then((config) => {
+    const config = await buildConfig;
+
+    const res = await (async config => {
         const apiUrl = `${options.apiRoot}/bot${token}/${method}`
         config.agent = options.agent
         return fetch(apiUrl, config)
-      })
-      .then((res) => res.text())
-      .then((text) => {
+      })(config);
+
+    const text = await res.text();
+
+    const generated_var_6 = await (async text => {
         return safeJSONParse(text) || {
           error_code: 500,
           description: 'Unsupported http response from Telegram',
           response: text
         }
-      })
-      .then((data) => {
-        if (!data.ok) {
-          debug('API call failed', data)
-          throw new TelegramError(data, { method, payload })
+      })(text);
+
+    return await (async generated_var_6 => {
+        if (!generated_var_6.ok) {
+          debug('API call failed', generated_var_6)
+          throw new TelegramError(generated_var_6, { method, payload })
         }
-        return data.result
-      })
+        return generated_var_6.result;
+      })(generated_var_6);
   }
 }
 

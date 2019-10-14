@@ -7,26 +7,31 @@ module.exports = function (opts) {
 
   const ttlMs = options.ttl && options.ttl * 1000
 
-  return (ctx, next) => {
+  return async (ctx, next) => {
     const key = options.getSessionKey(ctx)
     if (!key) {
       return next(ctx)
     }
     const now = new Date().getTime()
-    return Promise.resolve(options.store.get(key))
-      .then((state) => state || { session: {} })
-      .then(({ session, expires }) => {
-        if (expires && expires < now) {
-          session = {}
-        }
-        Object.defineProperty(ctx, options.property, {
-          get: function () { return session },
-          set: function (newValue) { session = Object.assign({}, newValue) }
-        })
-        return next(ctx).then(() => options.store.set(key, {
-          session,
-          expires: ttlMs ? now + ttlMs : null
-        }))
+    let generatedVariable14;
+    const state = await Promise.resolve(options.store.get(key));
+    generatedVariable14 = await state || { session: {} };
+
+    return await (async ({ session, expires }) => {
+      if (expires && expires < now) {
+        session = {}
+      }
+      Object.defineProperty(ctx, options.property, {
+        get: function () { return session },
+        set: function (newValue) { session = Object.assign({}, newValue) }
       })
-  }
+      let generatedVariable15;
+      generatedVariable15 = await next(ctx);
+
+      return await options.store.set(key, {
+        session,
+        expires: ttlMs ? now + ttlMs : null
+      });
+    })(generatedVariable14);
+  };
 }

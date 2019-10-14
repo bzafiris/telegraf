@@ -40,12 +40,15 @@ class SceneContext {
     delete this.ctx[sessionName].__scenes
   }
 
-  enter (sceneId, initialState, silent) {
+  async enter(sceneId, initialState, silent) {
     if (!sceneId || !this.scenes.has(sceneId)) {
       throw new Error(`Can't find scene: ${sceneId}`)
     }
     const leave = silent ? noop() : this.leave()
-    return leave.then(() => {
+    let generatedVariable12;
+    generatedVariable12 = await leave;
+
+    return await (async () => {
       debug('Enter scene', sceneId, initialState, silent)
       this.session.current = sceneId
       this.state = initialState
@@ -60,19 +63,21 @@ class SceneContext {
         ? this.current.enterMiddleware()
         : this.current.middleware()
       return handler(this.ctx, noop)
-    })
+    })();
   }
 
   reenter () {
     return this.enter(this.session.current, this.state)
   }
 
-  leave () {
+  async leave() {
     debug('Leave scene')
     const handler = this.current && this.current.leaveMiddleware
       ? this.current.leaveMiddleware()
       : safePassThru()
-    return handler(this.ctx, noop).then(() => this.reset())
+    let generatedVariable13;
+    generatedVariable13 = await handler(this.ctx, noop);
+    return await this.reset();
   }
 }
 

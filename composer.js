@@ -109,7 +109,11 @@ class Composer {
 
   static tap (middleware) {
     const handler = Composer.unwrap(middleware)
-    return (ctx, next) => Promise.resolve(handler(ctx, Composer.safePassThru())).then(() => next(ctx))
+    return (ctx, next) => (async () => {
+      let generatedVariable0;
+      generatedVariable0 = await Promise.resolve(handler(ctx, Composer.safePassThru()));
+      return await next(ctx);
+    })();
   }
 
   static passThru () {
@@ -124,8 +128,10 @@ class Composer {
     if (typeof factoryFn !== 'function') {
       throw new Error('Argument must be a function')
     }
-    return (ctx, next) => Promise.resolve(factoryFn(ctx))
-      .then((middleware) => Composer.unwrap(middleware)(ctx, next))
+    return (ctx, next) => (async () => {
+      const middleware = await Promise.resolve(factoryFn(ctx));
+      return await Composer.unwrap(middleware)(ctx, next);
+    })();
   }
 
   static log (logFn = console.log) {
@@ -136,8 +142,10 @@ class Composer {
     if (typeof predicate !== 'function') {
       return predicate ? trueMiddleware : falseMiddleware
     }
-    return Composer.lazy((ctx) => Promise.resolve(predicate(ctx))
-      .then((value) => value ? trueMiddleware : falseMiddleware))
+    return Composer.lazy((ctx) => (async () => {
+      const value = await Promise.resolve(predicate(ctx));
+      return await value ? trueMiddleware : falseMiddleware;
+    })());
   }
 
   static optional (predicate, ...fns) {
@@ -154,8 +162,11 @@ class Composer {
 
   static dispatch (routeFn, handlers) {
     return typeof routeFn === 'function'
-      ? Composer.lazy((ctx) => Promise.resolve(routeFn(ctx)).then((value) => handlers[value]))
-      : handlers[routeFn]
+      ? Composer.lazy((ctx) => (async () => {
+      const value = await Promise.resolve(routeFn(ctx));
+      return await handlers[value];
+    })())
+      : handlers[routeFn];
   }
 
   static mount (updateType, ...fns) {
@@ -286,9 +297,11 @@ class Composer {
 
   static memberStatus (status, ...fns) {
     const statuses = Array.isArray(status) ? status : [status]
-    return Composer.optional((ctx) => ctx.message && ctx.getChatMember(ctx.message.from.id)
-      .then(member => member && statuses.includes(member.status))
-    , ...fns)
+    return Composer.optional((ctx) => ctx.message && (async () => {
+      const member = await ctx.getChatMember(ctx.message.from.id);
+      return await member && statuses.includes(member.status);
+    })()
+    , ...fns);
   }
 
   static admin (...fns) {

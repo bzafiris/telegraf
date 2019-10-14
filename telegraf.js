@@ -91,36 +91,42 @@ class Telegraf extends Composer {
     return this
   }
 
-  launch (config = {}) {
-    return this.telegram.getMe()
-      .then((botInfo) => {
-        debug(`Launching @${botInfo.username}`)
-        this.options.username = botInfo.username
-        this.context.botInfo = botInfo
-        if (!config.webhook) {
-          const { timeout, limit, allowedUpdates, stopCallback } = config.polling || {}
-          return this.telegram.deleteWebhook()
-            .then(() => this.startPolling(timeout, limit, allowedUpdates, stopCallback))
-            .then(() => debug(`Bot started with long-polling`))
-        }
-        if (typeof config.webhook.domain !== 'string' && typeof config.webhook.hookPath !== 'string') {
-          throw new Error('Webhook domain or webhook path is required')
-        }
-        let domain = config.webhook.domain || ''
-        if (domain.startsWith('https://') || domain.startsWith('http://')) {
-          domain = new URL(domain).host
-        }
-        const hookPath = config.webhook.hookPath || `/telegraf/${crypto.randomBytes(32).toString('hex')}`
-        const { port, host, tlsOptions, cb } = config.webhook
-        this.startWebhook(hookPath, tlsOptions, port, host, cb)
-        if (!domain) {
-          debug(`Bot started with webhook`)
-          return
-        }
-        return this.telegram
-          .setWebhook(`https://${domain}${hookPath}`)
-          .then(() => debug(`Bot started with webhook @ https://${domain}`))
-      })
+  async launch(config = {}) {
+    const botInfo = await this.telegram.getMe();
+
+    return await (async botInfo => {
+      debug(`Launching @${botInfo.username}`)
+      this.options.username = botInfo.username
+      this.context.botInfo = botInfo
+      if (!config.webhook) {
+        const { timeout, limit, allowedUpdates, stopCallback } = config.polling || {}
+        let generatedVariable16;
+        let generatedVariable17;
+        generatedVariable16 = await this.telegram.deleteWebhook();
+        generatedVariable17 = await this.startPolling(timeout, limit, allowedUpdates, stopCallback);
+        return await debug(`Bot started with long-polling`);
+      }
+      if (typeof config.webhook.domain !== 'string' && typeof config.webhook.hookPath !== 'string') {
+        throw new Error('Webhook domain or webhook path is required')
+      }
+      let domain = config.webhook.domain || ''
+      if (domain.startsWith('https://') || domain.startsWith('http://')) {
+        domain = new URL(domain).host
+      }
+      const hookPath = config.webhook.hookPath || `/telegraf/${crypto.randomBytes(32).toString('hex')}`
+      const { port, host, tlsOptions, cb } = config.webhook
+      this.startWebhook(hookPath, tlsOptions, port, host, cb)
+      if (!domain) {
+        debug(`Bot started with webhook`)
+        return
+      }
+      let generatedVariable18;
+
+      generatedVariable18 = await this.telegram
+        .setWebhook(`https://${domain}${hookPath}`);
+
+      return await debug(`Bot started with webhook @ https://${domain}`);
+    })(botInfo);
   }
 
   stop (cb = noop) {
@@ -147,7 +153,7 @@ class Telegraf extends Composer {
     ])
   }
 
-  handleUpdate (update, webhookResponse) {
+  async handleUpdate(update, webhookResponse) {
     debug('Processing update', update.update_id)
     const tg = new Telegram(this.token, this.telegram.options, webhookResponse)
     const ctx = new Context(update, tg, this.options)
@@ -160,29 +166,43 @@ class Telegraf extends Composer {
     if (!started) {
       return
     }
-    this.telegram.getUpdates(timeout, limit, offset, allowedUpdates)
-      .catch((err) => {
-        if (err.code === 401 || err.code === 409) {
-          throw err
-        }
-        const wait = (err.parameters && err.parameters.retry_after) || this.options.retryAfter
-        console.error(`Failed to fetch updates. Waiting: ${wait}s`, err.message)
-        return new Promise((resolve) => setTimeout(resolve, wait * 1000, []))
-      })
-      .then((updates) => this.handleUpdates(updates).then(() => updates))
-      .catch((err) => {
-        console.error('Failed to process updates.', err)
-        this.polling.started = false
-        this.polling.offset = 0
-        this.polling.stopCallback && this.polling.stopCallback()
-        return []
-      })
-      .then((updates) => {
-        if (updates.length > 0) {
-          this.polling.offset = updates[updates.length - 1].update_id + 1
-        }
-        this.fetchUpdates()
-      })
+    (async () => {
+      let updates;
+
+      try {
+        updates = await this.telegram.getUpdates(timeout, limit, offset, allowedUpdates);
+      } catch (err) {
+        updates = await (async err => {
+            if (err.code === 401 || err.code === 409) {
+              throw err
+            }
+            const wait = (err.parameters && err.parameters.retry_after) || this.options.retryAfter
+            console.error(`Failed to fetch updates. Waiting: ${wait}s`, err.message)
+            return new Promise((resolve) => setTimeout(resolve, wait * 1000, []))
+          })(err);
+      }
+
+      let generated_var_19;
+
+      try {
+        generated_var_19 = await this.handleUpdates(updates).then(() => updates);
+      } catch (err) {
+        generated_var_19 = await (async err => {
+            console.error('Failed to process updates.', err)
+            this.polling.started = false
+            this.polling.offset = 0
+            this.polling.stopCallback && this.polling.stopCallback()
+            return []
+          })(err);
+      }
+
+      return await (async generated_var_19 => {
+          if (generated_var_19.length > 0) {
+            this.polling.offset = generated_var_19[generated_var_19.length - 1].update_id + 1
+          }
+          this.fetchUpdates()
+        })(generated_var_19);
+    })()
   }
 }
 

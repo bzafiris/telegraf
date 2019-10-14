@@ -23,17 +23,25 @@ module.exports = function (hookPath, updateHandler, errorHandler) {
         res.end()
         return errorHandler(error)
       }
-      updateHandler(update, res)
-        .then(() => {
-          if (!res.finished) {
-            res.end()
-          }
-        })
-        .catch((err) => {
-          debug('Webhook error', err)
-          res.writeHead(500)
-          res.end()
-        })
+      (async () => {
+        let generatedVariable7;
+
+        try {
+          generatedVariable7 = await updateHandler(update, res);
+
+          return await (async () => {
+              if (!res.finished) {
+                res.end()
+              }
+            })();
+        } catch (err) {
+          return await (async err => {
+              debug('Webhook error', err)
+              res.writeHead(500)
+              res.end()
+            })(err);
+        }
+      })()
     })
-  }
+  };
 }
