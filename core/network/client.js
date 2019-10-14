@@ -79,24 +79,23 @@ function buildJSONConfig (payload) {
   })
 }
 
-function buildFormDataConfig (payload) {
+async function buildFormDataConfig (payload) {
   if (payload.reply_markup && typeof payload.reply_markup !== 'string') {
     payload.reply_markup = JSON.stringify(payload.reply_markup)
   }
   const boundary = crypto.randomBytes(32).toString('hex')
   const formData = new MultipartStream(boundary)
   const tasks = Object.keys(payload).map((key) => attachFormValue(formData, key, payload[key]))
-  return Promise.all(tasks).then(() => {
-    return {
-      method: 'POST',
-      compress: true,
-      headers: { 'content-type': `multipart/form-data; boundary=${boundary}`, 'connection': 'keep-alive' },
-      body: formData
-    }
-  })
+  await Promise.all(tasks)
+  return {
+    method: 'POST',
+    compress: true,
+    headers: { 'content-type': `multipart/form-data; boundary=${boundary}`, 'connection': 'keep-alive' },
+    body: formData
+  }
 }
 
-function attachFormValue (form, id, value) {
+async function attachFormValue (form, id, value) {
   if (!value) {
     return Promise.resolve()
   }
@@ -110,49 +109,47 @@ function attachFormValue (form, id, value) {
   }
   if (id === 'thumb') {
     const attachmentId = crypto.randomBytes(16).toString('hex')
-    return attachFormMedia(form, value, attachmentId)
-      .then(() => form.addPart({
-        headers: { 'content-disposition': `form-data; name="${id}"` },
-        body: `attach://${attachmentId}`
-      }))
+    await attachFormMedia(form, value, attachmentId)
+    return form.addPart({
+      headers: { 'content-disposition': `form-data; name="${id}"` },
+      body: `attach://${attachmentId}`
+    })
   }
   if (Array.isArray(value)) {
-    return Promise.all(
-      value.map((item) => {
-        if (typeof item.media !== 'object') {
-          return Promise.resolve(item)
-        }
-        const attachmentId = crypto.randomBytes(16).toString('hex')
-        return attachFormMedia(form, item.media, attachmentId)
-          .then(() => Object.assign({}, item, { media: `attach://${attachmentId}` }))
-      })
-    ).then((items) => form.addPart({
+    const items = await Promise.all(value.map((item) => {
+      if (typeof item.media !== 'object') {
+        return Promise.resolve(item);
+      }
+      const attachmentId_1 = crypto.randomBytes(16).toString('hex');
+        return attachFormMedia(form, item.media, attachmentId_1)
+          .then(() => Object.assign({}, item, { media: `attach://${attachmentId_1}` }));
+    }))
+    return form.addPart({
       headers: { 'content-disposition': `form-data; name="${id}"` },
       body: JSON.stringify(items)
-    }))
+    })
   }
   if (typeof value.media !== 'undefined' && typeof value.type !== 'undefined') {
     const attachmentId = crypto.randomBytes(16).toString('hex')
-    return attachFormMedia(form, value.media, attachmentId)
-      .then(() => form.addPart({
-        headers: { 'content-disposition': `form-data; name="${id}"` },
-        body: JSON.stringify(Object.assign(value, {
-          media: `attach://${attachmentId}`
-        }))
+    await attachFormMedia(form, value.media, attachmentId_2)
+    return form.addPart({
+      headers: { 'content-disposition': `form-data; name="${id}"` },
+      body: JSON.stringify(Object.assign(value, {
+        media: `attach://${attachmentId_2}`
       }))
+    })
   }
   return attachFormMedia(form, value, id)
 }
 
-function attachFormMedia (form, media, id) {
+async function attachFormMedia (form, media, id) {
   let fileName = media.filename || `${id}.${DefaultExtensions[id] || 'dat'}`
   if (media.url) {
-    return fetch(media.url).then((res) =>
-      form.addPart({
-        headers: { 'content-disposition': `form-data; name="${id}"; filename="${fileName}"` },
-        body: res.body
-      })
-    )
+    const res = await fetch(media.url)
+    return form.addPart({
+      headers: { 'content-disposition': `form-data; name="${id}"; filename="${fileName}"` },
+      body: res.body
+    })
   }
   if (media.source) {
     if (fs.existsSync(media.source)) {

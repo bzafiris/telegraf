@@ -11,16 +11,14 @@ class Telegram extends ApiClient {
     return this.callApi('getFile', { file_id: fileId })
   }
 
-  getFileLink (fileId) {
-    return Promise.resolve(fileId)
-      .then((fileId) => {
-        if (fileId && fileId.file_path) {
-          return fileId
-        }
-        const id = fileId && fileId.file_id ? fileId.file_id : fileId
-        return this.getFile(id)
-      })
-      .then((file) => `${this.options.apiRoot}/file/bot${this.token}/${file.file_path}`)
+  async getFileLink (fileId) {
+    const fileId = await Promise.resolve(fileId)
+    if (fileId && fileId.file_path) {
+      return fileId;
+    }
+    const id = fileId && fileId.file_id ? fileId.file_id : fileId
+    const file = this.getFile(id)
+    return `${this.options.apiRoot}/file/bot${this.token}/${file.file_path}`
   }
 
   getUpdates (timeout, limit, offset, allowedUpdates) {
